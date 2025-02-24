@@ -3162,6 +3162,7 @@ Use this template for your response:
     let result = await prompt2({
       exportUserData: {label: "Export user settings/data? (e.g. your own avatar, name, text input history)", type: "select", options:[{value: "yes", content: "Yes"}, {value: "no", content: "No"}]},
       exportType: {label: "Export type", type: "select", options:[{content: "All characters and chats", value:"allCharactersAndThreads"}, {content: "All characters, no chats", value:"allCharactersNoThreads"}, {content: "Specific characters", value:"specificCharacters"}, {content: "Specific chats", value:"specificThreads"}]},
+      exportFormat: {hidden:true, label: "Export format", type: "select", options:[{content: "Compressed", value:"compressed"}, {content: "Text (about 3x larger file size)", value:"text"}]},
       exportThreadIds: {show:(data) => data.exportType==="specificThreads", label: "Chat IDs to export (comma-separated numbers). Chat IDs are shown in bottom-right of each chat card in the side bar. The characters associated with these chats will be exported too.", type: "textLine", defaultValue: "", placeholder:"23,45,67"},
       exportCharacterIds: {show:(data) => data.exportType==="specificCharacters", label: "Character IDs to export (comma-separated numbers). Character IDs are shown next to the character name.", type: "textLine", defaultValue: "", placeholder:"3,12,7,14"},
       includeThreadsOfCharacters: {show:(data) => data.exportType==="specificCharacters", label: "Include all chats with these characters?", type: "select", options:[{value: "yes", content: "Yes"}, {value: "no", content: "No"}], defaultValue: "no"},
@@ -3266,7 +3267,8 @@ Use this template for your response:
     }
 
     if(result.exportUserData === "no") {
-      json.data.data.find(d => d.tableName === "usageStats").rows = [];
+      let usageStats = json.data.data.find(d => d.tableName === "usageStats");
+      if(usageStats) usageStats.rows = [];
     } else {
       let usageStats = json.data.data.find(d => d.tableName === "usageStats");
       if(usageStats) {
@@ -3278,8 +3280,12 @@ Use this template for your response:
     
     if(window.CompressionStream) {
       let textBlob = new Blob([JSON.stringify(json)], {type:"application/json"});
+      if(result.exportFormat === "compressed") {
       let gzipBlob = await root.compressBlobWithGzip(textBlob);
       downloadTextOrBlob(gzipBlob, `perchance-characters-export-${yyyymmdd}.json.gz`);
+      } else if(result.exportFormat === "text") {
+        downloadTextOrBlob(textBlob, `perchance-characters-export-${yyyymmdd}.json`);
+      }
     } else {
       downloadTextOrBlob(JSON.stringify(json), `perchance-characters-export-${yyyymmdd}.json`);
     }
@@ -8888,7 +8894,7 @@ Use this template for your response:
     if(!wrapperStyle) wrapperStyle = character.messageWrapperStyle || "";
     if(!wrapperStyle) wrapperStyle = threadCharacter.messageWrapperStyle || "";
 
-    if(wrapperStyle.includes("font-family") && (wrapperStyle.includes("'") || wrapperStyle.includes("'"))) {
+    if(wrapperStyle.includes("font-family") && (wrapperStyle.includes("'") || wrapperStyle.includes(`"`))) {
       loadGoogleWebFontsInMessageWrapperStyleIfNeccessary(wrapperStyle);
     }
 
@@ -12380,10 +12386,12 @@ Use this template for your response:
 
         // Add all items serially to prevent browser crash:
         let i = 0;
-        let totalItems = Object.values(data.stores).reduce((a,v) => a+v.length, 0);
+        let totalItems = Object.values(data.stores).filter(s => s).reduce((a,v) => a+v.length, 0);
         for (let [storeName, rows] of Object.entries(data.stores)) {
+          if(!db[storeName]) continue; // maybe due to e.g. usageStats not existing anymore
+          
           await db[storeName].clear();
-          for(let item of rows) {
+          for(let item of (rows || [])) {
             await db[storeName].add(item);
             i++;
             if(i%100 === 0 && opts.onProgress) opts.onProgress({message:`${i}/${totalItems}`});
