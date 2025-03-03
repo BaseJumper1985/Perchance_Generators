@@ -203,6 +203,10 @@ I.e. you're free to do as you wish with it, including copying it, hosting it you
     let CBOR = await import("https://user-uploads.perchance.org/file/4cc84b2c503aad595e5c6e9fffe24602.js").then(r => r.default).catch(console.error);
     if(!CBOR) CBOR = await import(`https://user-uploads.perchance.org/file/4cc84b2c503aad595e5c6e9fffe24602.js?v=${Math.random()}`).then(r => r.default).catch(console.error);
     if(!CBOR) CBOR = await import(URL.createObjectURL(await root.superFetch(`https://user-uploads.perchance.org/file/4cc84b2c503aad595e5c6e9fffe24602.js`).then(r => r.blob()))).then(r => r.default).catch(console.error);
+    if(!CBOR) { // no idea why the above aren't working for some people, final fallback:
+      await import(`https://unpkg.com/cbor-x@1.6.0/dist/index.js`).catch(console.error); // adds it as a global
+      CBOR = self.CBOR;
+    }
     
     let jsonToSave = { meta:{type:"ai-character-chat-db-raw-export-v1", dbName}, stores:exportObj };
   
@@ -245,8 +249,10 @@ notes to self:
 <!-- old version 1: <script src="https://user-uploads.perchance.org/file/9992637c7d690500ce39ae476424fd7c.js"></script> --> 
 <!-- old version 2: <script src="https://user-uploads.perchance.org/file/e7f08d9c863ca4a4a6c2eed28bf21ef9.js"></script> -->
 
-<!-- note to self: make sure you keep the id="mainDependencyBundleScriptEl" if you update this -->
-<script id="mainDependencyBundleScriptEl" src="https://user-uploads.perchance.org/file/356cdae1f07f47ea93584f5dafea8a8c.js"></script>
+<!-- <script id="mainDependencyBundleScriptEl" src="https://user-uploads.perchance.org/file/356cdae1f07f47ea93584f5dafea8a8c.js"></script> -->
+<script>
+  root.loadDependencies(); // dependencies script now put inside a generator that exports a function to execute it
+</script>
 
 <!-- <script src="https://cdn.jsdelivr.net/npm/msgpackr@1.11.0/dist/index.min.js"></script> -->
 
@@ -1887,6 +1893,7 @@ notes to self:
       <br><br>
       <p id="storageNoticeEl" style="text-align:left; font-size:70%; opacity:0.8; padding:0.4rem; border:1px solid var(--border-color); border-radius:3px; max-width:500px; margin:0 auto; background:var(--box-color);"></p>
       
+      <!--
       <div id="introVideoCtn" style="text-align:center; padding:0.4rem; border:1px solid var(--border-color); border-radius:3px; max-width:max-content; margin:0 auto; background:var(--box-color); margin-top:2rem;">
         <div style="margin-bottom:0.25rem; font-size:70%; opacity:0.7; text-align:center;">I found this helpful intro video by <a href="https://www.youtube.com/watch?v=V8R1P6jM1es" target="_blank">CrossLax on YouTube</a>:</div>
         <div id="introVideoIframeWrapperEl"></div>
@@ -1899,6 +1906,7 @@ notes to self:
           introVideoIframeWrapperEl.innerHTML = `<iframe style="max-width:100%; aspect-ratio:336/189;" width="336" height="189" src="https://www.youtube-nocookie.com/embed/V8R1P6jM1es?si=yu1HV7DbKKNlHKLI&amp;hd=1&amp;start=158" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>`;
         }
       </script>
+      -->
       
       <p style="text-align: center;font-size: 80%;opacity: 0.8; padding:0 0.5rem; margin-bottom:0.25rem; margin-top:1rem;">This chat app thing is powered by the <a href="/ai-text-plugin" target="_blank">ai-text-plugin</a> and the <a href="/text-to-image-plugin" target="_blank">text-to-image-plugin</a>.</p>
       <p style="text-align: center;font-size: 80%;opacity: 0.8; padding:0 0.5rem; margin-bottom:0.25rem; margin-top:0;">For a simpler interface, try <a href="https://perchance.org/ai-chat" target="_blank">/ai-chat</a>.</p>
@@ -1971,17 +1979,17 @@ notes to self:
 <script type="module">
   console.log("load log: main script start", Date.now()-window.pageLoadStartTime);
 
-  let dependencyBundleUrl = document.querySelector("#mainDependencyBundleScriptEl").src;
-  if(!window.DOMPurify) { // not sure why, but for some people it's not loading, so try downloading again
-    console.error("window.DOMPurify is falsy. Downloading dependencyBundleUrl and adding script dynamically.");
-    const script = document.createElement('script');
-    let content = await fetch(dependencyBundleUrl+`?v=${Math.random()}`).then(r => r.text()).catch(console.error);
-    if(content === undefined) { // maybe user-uploads subdomain blocked for some reason
-      content = await root.superFetch(dependencyBundleUrl+`?v=${Math.random()}`).then(r => r.text()).catch(console.error);
-    }
-    script.textContent = content;
-    document.head.appendChild(script); // note: this executes the script *synchronously* which is what we need here
-  }
+  // let dependencyBundleUrl = document.querySelector("#mainDependencyBundleScriptEl").src;
+  // if(!window.DOMPurify) { // not sure why, but for some people it's not loading, so try downloading again
+  //   console.error("window.DOMPurify is falsy. Downloading dependencyBundleUrl and adding script dynamically.");
+  //   const script = document.createElement('script');
+  //   let content = await fetch(dependencyBundleUrl+`?v=${Math.random()}`).then(r => r.text()).catch(console.error);
+  //   if(content === undefined) { // maybe user-uploads subdomain blocked for some reason
+  //     content = await root.superFetch(dependencyBundleUrl+`?v=${Math.random()}`).then(r => r.text()).catch(console.error);
+  //   }
+  //   script.textContent = content;
+  //   document.head.appendChild(script); // note: this executes the script *synchronously* which is what we need here
+  // }
   
   // Important that this is high up in case of corrupted DB
   $.clearDataButton.addEventListener("click", async function() {
@@ -2098,6 +2106,15 @@ notes to self:
     let notifyCtn = document.createElement("div");
     existingGenerateCharacterFromUrlNotifyCtn = notifyCtn;
     
+    function tidyUp() {
+      generateCharacterFromUrlBtn.innerHTML = originalButtonHtml;
+      generateCharacterFromUrlBtn.onclick = originalButtonOnClick;
+      generateCharacterFromUrlBtn.style.cssText = originalButtonCssText;
+      generateCharacterFromUrlBtn.disabled = false;
+      generateCharacterFromUrlBtn.style.opacity = 1;
+      notifyCtn.remove();
+    }
+    
     try {
       generateCharacterFromUrlBtn.innerHTML = `<span style="display:inline-block; animation:rotate 1.5s linear infinite;">⏳</span> generating... <span class="generatingCharacterProgressPercentage"></span>`;
       generateCharacterFromUrlBtn.disabled = true;
@@ -2121,7 +2138,7 @@ notes to self:
         try {
           let blob = await root.superFetch(url).then(r => r.blob());
           if(await tryImportingExternalCharacterFileFormat(blob).catch(e => "fail") === "finished") {
-            notifyCtn.remove();
+            tidyUp();
             return;
           }
         } catch(e) { console.error(e); }
@@ -2133,7 +2150,7 @@ notes to self:
           let id = url.split("/").slice(4,6).join("/");
           let blob = await root.superFetch(`https://avatars.charhub.io/avatars/${id}/chara_card_v2.png?nocache=${Math.random()}`).then(r => r.blob());
           if(await tryImportingExternalCharacterFileFormat(blob).catch(e => "fail") === "finished") {
-            notifyCtn.remove();
+            tidyUp();
             return;
           }
         } catch(e) {
@@ -2164,7 +2181,7 @@ notes to self:
           
           let charJsonBlob = new Blob([JSON.stringify(char)], { type: "application/json" });
           if(await tryImportingExternalCharacterFileFormat(charJsonBlob).catch(e => "fail") === "finished") {
-            notifyCtn.remove();
+            tidyUp();
             return;
           }
         } catch(e) {
@@ -2213,7 +2230,7 @@ notes to self:
             await createNewThreadWithCharacterId(newCharacter.id);
           }
           
-          notifyCtn.remove();
+          tidyUp();
           return;
         } catch(e) {
           console.error(e);
@@ -2226,20 +2243,21 @@ notes to self:
       if(!window.Readability) window.Readability = await import("https://user-uploads.perchance.org/file/93edd249920ca5ac663278139c31868d.js?v=1").then(m => m.Readability).catch(console.error);
       // In case of user-uploads block for some reason:
       if(!window.Readability) window.Readability = await import(URL.createObjectURL(await root.superFetch("https://user-uploads.perchance.org/file/93edd249920ca5ac663278139c31868d.js").then(r => r.blob()))).then(m => m.Readability).catch(console.error);
+      if(!window.Readability) window.Readability = await import("https://esm.sh/@mozilla/readability@0.5.0?no-check").then(m => m.Readability).catch(console.error);
       
       let blob;
       try {
         let response = await root.superFetch(url);
         if(response.status === 404) {
-          notifyCtn.remove();
           console.error(`In generateCharacterFromUrl, couldn't find URL (404): ${url}`);
+          tidyUp();
           return alert("Hmm. Couldn't find that page on the internet. Did you get the webpage address/URL correct? You should do a Google search for the character's name to find a page with the character info, and once you've found it, copy all the 'https://blahblahblah...' text from in the browser address/search bar and then paste it into this box, and click generate, and it should work. If not, please share the URL using the feedback button.");
           // let searchHtml = await root.superFetch(`https://www.google.com/search?q=${encodeURIComponent(url)}`).then(r => r.text());
         }
         blob = await response.blob();
       } catch(e) {
-        notifyCtn.remove();
         console.error(`In generateCharacterFromUrl, ERROR while trying to superFetch URL: ${url}`, e);
+        tidyUp();
         return alert("Hmm. There was some sort of error while trying to download that web page. Did you get the webpage address/URL correct? You should do a Google search for the character's name to find a page with the character info, and once you've found it, copy all the 'https://blahblahblah...' text from in the browser address/search bar and then paste it into this box, and click generate, and it should work. If not, please share the URL using the feedback button.");
       }
       
@@ -2256,7 +2274,7 @@ notes to self:
         content = text.slice(0, 10000); // <-- grab only the first 10000 characters
       } else if(blob.type.startsWith("image/")) {
         if(await tryImportingExternalCharacterFileFormat(blob).catch(e => "fail") === "finished") {
-          notifyCtn.remove();
+          tidyUp();
           return;
         } else {
           avatarUrl = url;
@@ -2468,10 +2486,7 @@ Use this template for your response:
       generateCharacterFromUrlBtn.disabled = false;
       
       let showCharHandler = async function() {
-        generateCharacterFromUrlBtn.innerHTML = originalButtonHtml;
-        generateCharacterFromUrlBtn.style.cssText = originalButtonCssText;
-        generateCharacterFromUrlBtn.onclick = originalButtonOnClick;
-        notifyCtn.remove();
+        tidyUp();
         let charObj = {
           name,
           roleInstruction,
@@ -2489,11 +2504,7 @@ Use this template for your response:
       notifBtn.onclick = showCharHandler;
     } catch(e) {
       console.error(`In generateCharacterFromUrl, something went wrong with URL: ${url}`, e);
-      notifyCtn.remove();
-      generateCharacterFromUrlBtn.innerHTML = originalButtonHtml;
-      generateCharacterFromUrlBtn.style.cssText = originalButtonCssText;
-      generateCharacterFromUrlBtn.onclick = originalButtonOnClick;
-      generateCharacterFromUrlBtn.disabled = false;
+      tidyUp();
       alert(`Something went wrong while trying to fetch the content at that URL. Please use the feedback button to report this error message: "${e.message}" - and please also 𝗶𝗻𝗰𝗹𝘂𝗱𝗲 𝘁𝗵𝗲 𝗨𝗥𝗟 𝘁𝗵𝗮𝘁 𝘆𝗼𝘂 𝘂𝘀𝗲𝗱 if possible.`);
     }
   };
@@ -6396,11 +6407,31 @@ Use this template for your response:
       return; // hackily detect old safari versions that crash when trying to load transformers.js - they'll have to go without lore/memory search.
     }
     
-    // let Comlink = await import("https://unpkg.com/comlink@4.4.1/dist/esm/comlink.mjs");
     let Comlink = await import("https://user-uploads.perchance.org/file/429f4417069e11ed73a986e6efab065c.js").catch(console.error); // this is just an exact copy of https://unpkg.com/comlink@4.4.1/dist/esm/comlink.mjs
+    if(!Comlink) Comlink = await import("https://unpkg.com/comlink@4.4.1/dist/esm/comlink.mjs").catch(console.error);
     
     // let worker = new Worker(URL.createObjectURL(new Blob([`importScripts("https://user-uploads.perchance.org/file/fb599e745c0f1b1c78543c8aa228bf71.js");`], {type:"text/javascript"}))); // transformers.js v2.8.0
-    let worker = new Worker(URL.createObjectURL(new Blob([`importScripts("https://user-uploads.perchance.org/file/7b296c17c954e25f2f5f72bd98e4a2b1.js");`], {type:"text/javascript"}))); // transformers.js v2.17.1
+    // let worker = new Worker(URL.createObjectURL(new Blob([`importScripts("https://user-uploads.perchance.org/file/7b296c17c954e25f2f5f72bd98e4a2b1.js");`], {type:"text/javascript"}))); // transformers.js v2.17.1
+    let worker = new Worker(URL.createObjectURL(new Blob([`importScripts("https://unpkg.com/comlink@4.4.1/dist/umd/comlink.js");
+      let extractors = {};
+      async function loadModel(modelName) {
+          if (!self.pipeline) {
+            let { pipeline, env } = await import('https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.1');
+            env.allowLocalModels = false;
+            self.pipeline = pipeline;
+          }
+          if (!extractors[modelName]) {
+              extractors[modelName] = await pipeline('feature-extraction', modelName);
+          }
+      }
+      async function extractFeatures(text, modelName) {
+          await loadModel(modelName);
+          const extractor = extractors[modelName];
+          const result = await extractor(text, { pooling: 'mean', normalize: true });
+          return result.data;
+      }
+      Comlink.expose({ extractFeatures });
+    `], {type:"text/javascript"}))); // transformers.js v2.17.1
     let wrappedWorker = Comlink.wrap(worker);
     // load default model and 'warm it up':
     await wrappedWorker.extractFeatures("test 123", currentDefaultTextEmbeddingModelName);
@@ -12365,6 +12396,10 @@ Use this template for your response:
       let CBOR = await import("https://user-uploads.perchance.org/file/4cc84b2c503aad595e5c6e9fffe24602.js").then(r => r.default).catch(console.error);
       if(!CBOR) CBOR = await import(`https://user-uploads.perchance.org/file/4cc84b2c503aad595e5c6e9fffe24602.js?v=${Math.random()}`).then(r => r.default).catch(console.error);
       if(!CBOR) CBOR = await import(URL.createObjectURL(await root.superFetch(`https://user-uploads.perchance.org/file/4cc84b2c503aad595e5c6e9fffe24602.js`).then(r => r.blob()))).then(r => r.default).catch(console.error);
+      if(!CBOR) { // no idea why the above aren't working for some people, final fallback:
+        await import(`https://unpkg.com/cbor-x@1.6.0/dist/index.js`).catch(console.error); // adds it as a global
+        CBOR = self.CBOR;
+      }
       const data = CBOR.decode(cborBytes);
       
       if(data.meta?.type !== `ai-character-chat-db-raw-export-v1`) return "fail";
