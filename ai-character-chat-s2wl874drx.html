@@ -1573,6 +1573,11 @@ notes to self:
 
   }
 
+  /* prevent custom message styles from messing with inline message editor */
+  #messageFeed .message textarea { color:revert; }
+  #messageFeed .message button { color:revert; font-family:revert; }
+  #messageFeed .message .messageVariantsCtn { color:var(--text-color) !important; font-family:sans-serif !important; text-shadow:none !important; }
+
   #messageFeed > *:first-child {
     /* PERCHANCE EDIT */
     /* margin-top: 3rem; */
@@ -4697,7 +4702,7 @@ Use this template for your response:
     if(currentlySearchingCharacters) return;
     currentlySearchingCharacters = true;
     characterSearchBtn.innerHTML = "⏳";
-    searchString = searchString.trim();
+    searchString = searchString.trim().toLowerCase();
     await renderCharacterList({searchString}).catch(console.error);
     currentlySearchingCharacters = false;
     characterSearchBtn.innerHTML = "🔎";
